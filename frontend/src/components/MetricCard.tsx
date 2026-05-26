@@ -108,7 +108,7 @@ export default function MetricCard({
 
       <div className="flex items-baseline gap-1">
         <span className="text-3xl font-bold text-white tabular-nums">
-          {typeof valor === "number" ? valor.toFixed(1) : valor}
+          {parseFloat(String(valor)).toFixed(1)}
         </span>
         <span className="text-sm text-gray-400">{unidad}</span>
       </div>

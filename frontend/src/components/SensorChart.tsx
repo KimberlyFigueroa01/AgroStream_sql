@@ -98,7 +98,7 @@ export default function SensorChart({
             }}
             labelStyle={{ color: "#9ca3af" }}
             formatter={(value: number) => [
-              `${value.toFixed(2)} ${unidad}`,
+              `${parseFloat(String(value)).toFixed(2)} ${unidad}`,
               label,
             ]}
           />

@@ -141,6 +141,21 @@ class BenchmarkService:
             "resultado":   resultado,
         }
 
+    def medir(self, operacion: str, func, *args, filas_tabla: int = 0, **kwargs):
+        """
+        Ejecuta func, mide su duración en ms, registra la métrica y retorna (resultado, duracion_ms).
+        """
+        try:
+            t0 = time.perf_counter()
+            resultado = func(*args, **kwargs)
+            t1 = time.perf_counter()
+            duracion_ms = (t1 - t0) * 1000.0
+            self._registrar_metrica(operacion, duracion_ms, filas_tabla)
+            return resultado, duracion_ms
+        except Exception as e:
+            print(f"❌ Error en operación '{operacion}': {e}")
+            raise
+
     def obtener_estadisticas(self, operacion: str = None, ultimas_n: int = 100) -> dict:
         """
         Retorna estadísticas agregadas de las métricas registradas.
@@ -184,6 +199,68 @@ class BenchmarkService:
             "min_ms":      round(min(duraciones), 3),
             "total_operaciones": n,
             "filas_actuales":    metricas[0].filas_tabla if metricas else 0,
+        }
+
+    def obtener_estadisticas_completas(self, operacion: str, desde_timestamp: Optional[str] = None) -> dict:
+        """
+        Retorna estadísticas completas con percentiles para una operación.
+        
+        Args:
+            operacion (str): Nombre de la operación (ej: "INSERT_lectura_postgres", "HSET_sensor_estado")
+            desde_timestamp (str, optional): ISO 8601 datetime para filtrar desde cierta fecha
+            
+        Returns:
+            dict: { count, avg_ms, median_ms, min_ms, max_ms, p95_ms, p99_ms }
+        """
+        from datetime import datetime
+        
+        with SessionLocal() as session:
+            query = session.query(MetricaBenchmark).filter(
+                MetricaBenchmark.operacion == operacion
+            )
+            
+            if desde_timestamp:
+                try:
+                    desde_dt = datetime.fromisoformat(desde_timestamp.replace('Z', '+00:00'))
+                    query = query.filter(MetricaBenchmark.timestamp >= desde_dt)
+                except:
+                    pass
+            
+            metricas = query.order_by(MetricaBenchmark.timestamp.asc()).all()
+
+        if not metricas:
+            return {
+                "count": 0,
+                "avg_ms": 0.0,
+                "median_ms": 0.0,
+                "min_ms": 0.0,
+                "max_ms": 0.0,
+                "p95_ms": 0.0,
+                "p99_ms": 0.0,
+            }
+
+        duraciones = sorted([float(m.duracion_ms) for m in metricas])
+        n = len(duraciones)
+        
+        # Calcular percentiles
+        def percentil(values, p):
+            """Calcula el percentil p (0-100) de una lista ordenada."""
+            if not values:
+                return 0.0
+            idx = int((p / 100.0) * (len(values) - 1))
+            idx = min(idx, len(values) - 1)
+            return values[idx]
+        
+        mediana = duraciones[n // 2] if n % 2 == 1 else (duraciones[n // 2 - 1] + duraciones[n // 2]) / 2
+        
+        return {
+            "count": n,
+            "avg_ms": round(sum(duraciones) / n, 3),
+            "median_ms": round(mediana, 3),
+            "min_ms": round(min(duraciones), 3),
+            "max_ms": round(max(duraciones), 3),
+            "p95_ms": round(percentil(duraciones, 95), 3),
+            "p99_ms": round(percentil(duraciones, 99), 3),
         }
 
     def obtener_estadisticas_por_operacion(self, ultimas_n: int = 100) -> dict:

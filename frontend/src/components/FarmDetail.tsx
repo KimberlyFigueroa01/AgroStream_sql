@@ -37,7 +37,7 @@ export default function FarmDetail({ finca, lecturas }: FarmDetailProps) {
     const sensor = sensores.find((s) => s.tipo === selectedSensorTipo);
     if (!sensor) return;
 
-    getHistorial(finca.id, sensor.id)
+    getHistorial(sensor.id)
       .then((data) => {
         setSensorHistorial((prev) => ({
           ...prev,
@@ -118,7 +118,7 @@ export default function FarmDetail({ finca, lecturas }: FarmDetailProps) {
         <div className="flex items-center gap-4 text-sm text-gray-400">
           <span className="flex items-center gap-1.5">
             <MapPin size={14} />
-            {finca.lat.toFixed(4)}°N, {Math.abs(finca.lon).toFixed(4)}°W
+            {parseFloat(finca.lat).toFixed(4)}°N, {Math.abs(parseFloat(finca.lon)).toFixed(4)}°W
           </span>
           <span className="flex items-center gap-1.5">
             <Mountain size={14} />

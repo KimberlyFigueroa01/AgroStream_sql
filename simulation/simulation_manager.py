@@ -82,6 +82,16 @@ class SimulationManager:
         total_select_ms = 0.0
         lecturas_ciclo = 0
         alertas_ciclo = []
+        
+        # Acumuladores para métricas Redis
+        redis_metrics = {
+            "HSET_sensor_estado": [],
+            "HSET_finca_ultima": [],
+            "LPUSH_historial_sensor": [],
+            "LPUSH_alerta_global": [],
+            "LPUSH_alerta_finca": [],
+        }
+        redis_errors = 0
 
         for finca in fincas:
             sensores = self.finca_repo.obtener_sensores(finca["id"])
@@ -94,9 +104,12 @@ class SimulationManager:
                 # Generar lectura simulada
                 lectura_data = self.sensor_virtual.generar_lectura(sensor, finca)
 
-                # Ingestar con benchmark medido
+                # Ingestar con benchmark medido (HÍBRIDO: PostgreSQL + Redis)
                 resultado = self.ingesta.ingestar_lectura(lectura_data, finca["nombre"])
                 bench = resultado["benchmark"]
+                redis_status = resultado["redis_status"]
+                redis_durations = resultado["redis_durations"]
+                
                 total_insert_ms += bench["duracion_ms"]
                 lecturas_ciclo += 1
 
@@ -111,11 +124,7 @@ class SimulationManager:
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                 })
 
-                # Si hay alerta, emitir
-                if resultado["alerta"]:
-                    alertas_ciclo.append(resultado["alerta"])
-
-                # Emitir benchmark por cada INSERT
+                # Emitir benchmark PostgreSQL
                 redis_ref = self.benchmark.obtener_comparacion_redis()
                 self.socketio.emit("benchmark_update", {
                     "operacion":        bench["operacion"],
@@ -123,7 +132,32 @@ class SimulationManager:
                     "filas_tabla":      bench["filas_tabla"],
                     "timestamp":        datetime.now(timezone.utc).isoformat(),
                     "comparacion_redis": redis_ref.get("INSERT_lectura", {}),
+                    "db": "postgresql",
                 })
+
+                # Emitir benchmarks de Redis (si están disponibles)
+                if redis_status == "ok":
+                    for op_name, duration in redis_durations.items():
+                        if duration is not None and isinstance(duration, (int, float)):
+                            # Registrar métrica para acumular
+                            if op_name in redis_metrics:
+                                redis_metrics[op_name].append(duration)
+                            
+                            # Emitir evento para cada operación Redis
+                            self.socketio.emit("benchmark_update", {
+                                "operacion":    op_name,
+                                "duracion_ms":  duration,
+                                "timestamp":    datetime.now(timezone.utc).isoformat(),
+                                "db":           "redis",
+                                "finca_id":     finca["id"],
+                                "sensor_id":    sensor["id"],
+                            })
+                elif redis_status == "error":
+                    redis_errors += 1
+
+                # Si hay alerta, emitir
+                if resultado["alerta"]:
+                    alertas_ciclo.append(resultado["alerta"])
 
             # Medir SELECT de estado actual de la finca (una vez por finca por ciclo)
             try:
@@ -136,9 +170,20 @@ class SimulationManager:
         if alertas_ciclo:
             self.socketio.emit("sensor_alerts", alertas_ciclo)
 
-        # Emitir resumen de benchmark del ciclo
+        # Emitir resumen de benchmark del ciclo (incluir métricas Redis)
         filas = self.benchmark.contar_filas_lecturas()
         avg_insert = total_insert_ms / lecturas_ciclo if lecturas_ciclo > 0 else 0
+        
+        # Calcular promedios de operaciones Redis
+        redis_summary = {}
+        for op_name, durations in redis_metrics.items():
+            if durations:
+                redis_summary[op_name] = {
+                    "count": len(durations),
+                    "promedio_ms": round(sum(durations) / len(durations), 3),
+                    "min_ms": round(min(durations), 3),
+                    "max_ms": round(max(durations), 3),
+                }
 
         self.socketio.emit("simulation_benchmark", {
             "insert_ms":        round(avg_insert, 3),
@@ -147,4 +192,6 @@ class SimulationManager:
             "timestamp":        datetime.now(timezone.utc).isoformat(),
             "ciclo":            self._ciclo,
             "lecturas_ciclo":   lecturas_ciclo,
+            "redis_summary":    redis_summary,
+            "redis_errors":     redis_errors,
         })

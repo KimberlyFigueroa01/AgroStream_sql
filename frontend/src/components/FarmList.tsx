@@ -56,7 +56,7 @@ export default function FarmList({
             <div className="flex items-center gap-3 text-xs text-gray-400 mb-3">
               <span className="flex items-center gap-1">
                 <MapPin size={12} />
-                {finca.lat.toFixed(2)}°, {finca.lon.toFixed(2)}°
+                {parseFloat(finca.lat).toFixed(2)}°, {parseFloat(finca.lon).toFixed(2)}°
               </span>
               <span className="flex items-center gap-1">
                 <Mountain size={12} />
@@ -71,7 +71,7 @@ export default function FarmList({
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-orange-400"></span>
                     <span className="text-gray-300 font-mono">
-                      {tempLectura.valor.toFixed(1)}°C
+                      {parseFloat(tempLectura.valor).toFixed(1)}°C
                     </span>
                   </div>
                 )}
@@ -79,7 +79,7 @@ export default function FarmList({
                   <div className="flex items-center gap-1.5">
                     <span className="w-2 h-2 rounded-full bg-blue-400"></span>
                     <span className="text-gray-300 font-mono">
-                      {humLectura.valor.toFixed(1)}%
+                      {parseFloat(humLectura.valor).toFixed(1)}%
                     </span>
                   </div>
                 )}
