@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base Styles ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #374151 #111827;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #111827;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+
+/* ── Glassmorphism utilities ── */
+@layer components {
+  .glass {
+    @apply bg-gray-900/60 backdrop-blur-xl border border-gray-700/50 shadow-2xl;
+  }
+
+  .glass-card {
+    @apply bg-gray-900/40 backdrop-blur-lg border border-gray-700/30 rounded-2xl shadow-lg;
+  }
+
+  .glass-header {
+    @apply bg-gray-900/80 backdrop-blur-2xl border-b border-gray-700/50;
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(34, 197, 94, 0.15), 0 0 60px rgba(34, 197, 94, 0.05);
+  }
+
+  .glow-orange {
+    box-shadow: 0 0 20px rgba(249, 115, 22, 0.15), 0 0 60px rgba(249, 115, 22, 0.05);
+  }
+
+  .glow-red {
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.2), 0 0 60px rgba(239, 68, 68, 0.08);
+  }
+
+  /* Animated gradient border */
+  .gradient-border {
+    position: relative;
+    background: linear-gradient(135deg, #166534, #052e16);
+    padding: 1px;
+    border-radius: 1rem;
+  }
+
+  .gradient-border::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, #22c55e, #14532d, #f97316);
+    mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    mask-composite: exclude;
+    -webkit-mask-composite: xor;
+  }
+}
+
+/* ── Benchmark bar animation ── */
+.bench-bar {
+  transition: width 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+/* ── Metric card pulse animation ── */
+@keyframes metricPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+}
+
+.metric-update {
+  animation: metricPulse 0.3s ease-out;
+}
+
+/* ── Status dot animation ── */
+@keyframes statusBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.status-dot {
+  animation: statusBlink 2s ease-in-out infinite;
+}
