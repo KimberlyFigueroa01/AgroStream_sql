@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from "react";
 import FarmList from "./components/FarmList";
 import FarmDetail from "./components/FarmDetail";
 import BenchmarkPanel from "./components/BenchmarkPanel";
+import AddFincaModal from "./components/AddFincaModal";
 import { getFincas, getLecturas } from "./lib/api";
 import { getSocket } from "./lib/socket";
 import type { Finca, Lectura } from "./lib/types";
@@ -10,6 +11,7 @@ export default function App() {
   const [fincas, setFincas] = useState<Finca[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [lecturasPorFinca, setLecturasPorFinca] = useState<Record<string, Lectura[]>>({});
+  const [isAddOpen, setIsAddOpen] = useState(false);
 
   useEffect(() => {
     loadFincas();
@@ -71,6 +73,12 @@ export default function App() {
       <div className="max-w-7xl mx-auto">
         <header className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">AgroStream — SQL Demo</h1>
+          <button
+            onClick={() => setIsAddOpen(true)}
+            className="text-sm px-3 py-2 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+          >
+            Agregar finca
+          </button>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -94,6 +102,15 @@ export default function App() {
           </main>
         </div>
       </div>
+
+      <AddFincaModal
+        open={isAddOpen}
+        onClose={() => setIsAddOpen(false)}
+        onCreated={(finca) => {
+          setFincas((prev) => [...prev, finca]);
+          setSelectedId(finca.id);
+        }}
+      />
     </div>
   );
 }

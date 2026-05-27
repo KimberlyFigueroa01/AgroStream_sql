@@ -4,6 +4,7 @@ Inicialización de datos seed (3 fincas con 5 sensores cada una).
 """
 
 import logging
+import uuid
 from typing import List, Dict, Any, Optional
 from models.base import SessionLocal
 from models.finca import Finca
@@ -170,6 +171,74 @@ class FincaService:
                 }
                 for s in sensores
             ]
+        finally:
+            session.close()
+
+    def crear_finca(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Crea una finca con sensores base (uno por tipo).
+        Requiere: nombre, lat, lon. Altitud opcional.
+        """
+        nombre = (data.get("nombre") or "").strip()
+        if not nombre:
+            raise ValueError("nombre es requerido")
+
+        try:
+            lat = float(data.get("lat"))
+            lon = float(data.get("lon"))
+        except (TypeError, ValueError):
+            raise ValueError("lat y lon son requeridos y deben ser numericos")
+
+        altitud = data.get("altitud_m", 0)
+        try:
+            altitud = int(float(altitud)) if altitud is not None else 0
+        except (TypeError, ValueError):
+            altitud = 0
+
+        finca_id = (data.get("id") or "").strip() or f"finca_{uuid.uuid4().hex[:8]}"
+
+        session = SessionLocal()
+        try:
+            if session.get(Finca, finca_id):
+                raise ValueError("id de finca ya existe")
+
+            finca = Finca(
+                id=finca_id,
+                nombre=nombre,
+                lat=lat,
+                lon=lon,
+                altitud_m=altitud,
+                ciudad=data.get("ciudad"),
+                departamento=data.get("departamento"),
+                activa=True,
+            )
+            session.add(finca)
+            session.flush()
+
+            tipos_sensores = [
+                {"tipo": "temperatura", "unidad": "°C"},
+                {"tipo": "humedad", "unidad": "%"},
+                {"tipo": "co2", "unidad": "ppm"},
+                {"tipo": "humedad_suelo", "unidad": "%"},
+                {"tipo": "radiacion", "unidad": "W/m²"},
+            ]
+
+            for sensor_tipo in tipos_sensores:
+                sensor_id = f"{finca.id}:{sensor_tipo['tipo']}"
+                sensor = Sensor(
+                    id=sensor_id,
+                    finca_id=finca.id,
+                    tipo=sensor_tipo["tipo"],
+                    unidad=sensor_tipo["unidad"],
+                    activo=True,
+                )
+                session.add(sensor)
+
+            session.commit()
+            return finca.to_dict()
+        except Exception:
+            session.rollback()
+            raise
         finally:
             session.close()
 

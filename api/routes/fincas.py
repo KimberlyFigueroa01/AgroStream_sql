@@ -22,6 +22,19 @@ def listar_fincas():
     return jsonify(fincas)
 
 
+@fincas_bp.route("/", methods=["POST"])
+def crear_finca():
+    """POST /api/fincas/ — Crea una finca con sensores por defecto."""
+    data = request.get_json(silent=True) or {}
+    try:
+        finca = finca_svc.crear_finca(data)
+        return jsonify(finca), 201
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": "Error creando finca", "detalle": str(e)}), 500
+
+
 @fincas_bp.route("/<finca_id>", methods=["GET"])
 def obtener_finca(finca_id: str):
     """GET /api/fincas/<id> — Detalle de una finca."""
