@@ -54,6 +54,10 @@ class OpenMeteoClient:
         data["fuente"] = "modelo_local"
         return data
 
+    def obtener_datos(self, lat: float, lon: float, altitud_m: int = 0) -> dict:
+        """Alias público para mantener compatibilidad con el resto del sistema."""
+        return self.obtener_condiciones(lat, lon, altitud_m)
+
     # ── Open-Meteo API ───────────────────────────
 
     def _consultar_api(self, lat: float, lon: float) -> Optional[dict]:

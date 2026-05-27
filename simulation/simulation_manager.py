@@ -9,7 +9,7 @@ import time
 from datetime import datetime, timezone
 
 import config
-from simulation.sensor_virtual import SensorVirtual
+from services.openmeteo_client import OpenMeteoClient
 from services.ingesta_service import IngestaService
 from services.benchmark_service import BenchmarkService
 from repositories.finca_repository import FincaRepository
@@ -23,7 +23,7 @@ class SimulationManager:
 
     def __init__(self, socketio):
         self.socketio = socketio
-        self.sensor_virtual = SensorVirtual()
+        self.meteo_client = OpenMeteoClient()
         self.ingesta = IngestaService()
         self.benchmark = BenchmarkService()
         self.finca_repo = FincaRepository()
@@ -100,9 +100,36 @@ class SimulationManager:
             if not sensores:
                 continue
 
+            condiciones = self.meteo_client.obtener_datos(
+                finca["lat"], finca["lon"], finca.get("altitud_m", 0)
+            )
+            fuente = condiciones.get("fuente", "openmeteo")
+            print(
+                f"  \u2601 OpenMeteo {finca['id']} {finca['nombre']} -> "
+                f"fuente={fuente}, temp={condiciones.get('temperatura')}, "
+                f"hum={condiciones.get('humedad')}, rad={condiciones.get('radiacion')}, "
+                f"viento={condiciones.get('viento')}"
+            )
+
             for sensor in sensores:
-                # Generar lectura simulada
-                lectura_data = self.sensor_virtual.generar_lectura(sensor, finca)
+                valor = self._valor_real(sensor["tipo"], condiciones)
+                lectura_data = {
+                    "sensor_id": sensor["id"],
+                    "finca_id":  finca["id"],
+                    "tipo":      sensor["tipo"],
+                    "valor":     round(valor, 4),
+                    "unidad":    sensor["unidad"],
+                    "fuente":    fuente,
+                    "anomalia":  False,
+                    "lat":       finca["lat"],
+                    "lon":       finca["lon"],
+                    "altitud_m": finca.get("altitud_m"),
+                }
+                print(
+                    f"  \u2192 Lectura {sensor['id']} tipo={sensor['tipo']} "
+                    f"valor={lectura_data['valor']} {lectura_data['unidad']} "
+                    f"fuente={lectura_data['fuente']}"
+                )
 
                 # Ingestar con benchmark medido (HÍBRIDO: PostgreSQL + Redis)
                 resultado = self.ingesta.ingestar_lectura(lectura_data, finca["nombre"])
@@ -195,3 +222,20 @@ class SimulationManager:
             "redis_summary":    redis_summary,
             "redis_errors":     redis_errors,
         })
+
+    def _valor_real(self, tipo: str, condiciones: dict) -> float:
+        """Mapea condiciones Open-Meteo a los tipos de sensor existentes."""
+        if tipo == "temperatura":
+            return float(condiciones.get("temperatura", 15.0))
+        if tipo == "humedad":
+            return float(condiciones.get("humedad", 70.0))
+        if tipo == "radiacion":
+            return max(0.0, float(condiciones.get("radiacion", 0.0)))
+        if tipo == "co2":
+            hora = datetime.now().hour
+            base = 400.0
+            return base - 20.0 if 6 <= hora <= 18 else base + 40.0
+        if tipo == "humedad_suelo":
+            humedad_aire = float(condiciones.get("humedad", 70.0))
+            return max(0.0, min(100.0, humedad_aire * 0.6))
+        return 0.0

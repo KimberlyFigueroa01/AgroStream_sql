@@ -4,7 +4,14 @@ Proporciona una función singleton para obtener el cliente Redis.
 """
 
 import redis
-from config import REDIS_URL, REDIS_HOST, REDIS_PORT, REDIS_DB, REDIS_PASSWORD
+from config import (
+    REDIS_URL,
+    REDIS_HOST,
+    REDIS_PORT,
+    REDIS_DB,
+    REDIS_USERNAME,
+    REDIS_PASSWORD,
+)
 
 
 def get_redis_client():
@@ -24,6 +31,7 @@ def get_redis_client():
             host=REDIS_HOST,
             port=REDIS_PORT,
             db=REDIS_DB,
+            username=REDIS_USERNAME,
             password=REDIS_PASSWORD,
             decode_responses=True,
         )

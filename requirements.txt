@@ -2,9 +2,11 @@ Flask==3.0.3
 Flask-SocketIO==5.5.1
 flask-cors==5.0.0
 SQLAlchemy==2.0.41
+psycopg2==2.9.12
 psycopg2-binary==2.9.3
 numpy==1.24.4
 requests==2.32.3
+dotenv==0.9.9
 python-dotenv==1.0.1
 redis==5.0.1
 tabulate==0.9.0
